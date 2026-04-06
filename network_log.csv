@@ -4,3 +4,5 @@ Timestamp,Google_DNS,Cloudflare_DNS,Quad9_DNS
 2026-04-04 17:19:42,Timeout/Error,Timeout/Error,Timeout/Error
 2026-04-04 21:58:11,2.99ms,1.74ms,1.57ms
 2026-04-05 17:19:40,25.34ms,17.53ms,3.44ms
+2026-04-06 09:01:41,36.34ms,16.38ms,48.28ms
+2026-04-06 09:02:57,27.37ms,16.22ms,26.54ms
