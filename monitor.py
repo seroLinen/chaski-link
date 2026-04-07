@@ -1,64 +1,78 @@
-import os
-import csv
 import socket
 import time
+import csv
+import os
 from datetime import datetime
 from plyer import notification
 
-# Target DNS servers
-TARGETS = {
-    "Google_DNS": "8.8.8.8",
-    "Cloudflare_DNS": "1.1.1.1",
-    "Quad9_DNS": "9.9.9.9"
-}
-PORT = 53
-TIMEOUT = 5
-LATENCY_THRESHOLD = 100.0  # Alert if higher than 100ms
+# --- CONFIGURATION ---
+# Threshold in milliseconds to trigger a Windows notification
+LATENCY_THRESHOLD = 100.0 
+LOG_FILE = 'network_log.csv'
+
+def check_connectivity():
+    """Checks latency for specific DNS servers individually."""
+    servers = {
+        "Google_DNS": "8.8.8.8",
+        "Cloudflare_DNS": "1.1.1.1",
+        "Quad9_DNS": "9.9.9.9"
+    }
+    
+    results = {}
+    any_high_latency = False
+    
+    for name, ip in servers.items():
+        start = time.time()
+        try:
+            # Attempt a TCP connection to Port 53 (DNS)
+            socket.create_connection((ip, 53), timeout=3)
+            latency = (time.time() - start) * 1000
+            results[name] = f"{latency:.2f}ms"
+            
+            if latency > LATENCY_THRESHOLD:
+                any_high_latency = True
+        except Exception:
+            results[name] = "Offline"
+            any_high_latency = True # Treat offline as a critical alert
+            
+    return results, any_high_latency
 
 def send_chaski_alert(title, message):
-    """Triggers a Windows Toast Notification for Chaski-Link."""
-    notification.notify(
-        title=f"Chaski-Link: {title}",
-        message=message,
-        app_name="Chaski-Link NPM",
-        timeout=10
-    )
-
-def get_latency(host):
-    start_time = time.perf_counter()
+    """Sends a Windows Toast Notification."""
     try:
-        with socket.create_connection((host, PORT), timeout=TIMEOUT) as sock:
-            end_time = time.perf_counter()
-            latency = (end_time - start_time) * 1000
-            
-            # High latency check
-            if latency > LATENCY_THRESHOLD:
-                send_chaski_alert("High Latency", f"{host} responded in {latency:.2f}ms")
-                
-            return f"{latency:.2f}ms"
-    except (socket.timeout, Exception):
-        send_chaski_alert("Runner Delayed", f"The messenger failed to reach {host}")
-        return "Timeout/Error"
+        notification.notify(
+            title=f"Chaski-Link: {title}",
+            message=message,
+            app_name="Chaski-Link NPM",
+            timeout=10
+        )
+    except Exception as e:
+        print(f"Notification failed: {e}")
 
 def main():
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    row = [timestamp]
-    headers = ["Timestamp"]
-
-    for name, ip in TARGETS.items():
-        headers.append(name)
-        row.append(get_latency(ip))
-
-    file_name = 'network_log.csv'
-    file_exists = os.path.isfile(file_name)
-
-    with open(file_name, 'a', newline='') as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(headers)
-        writer.writerow(row)
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    results, alert_needed = check_connectivity()
     
+    # Check if file exists to write headers
+    file_exists = os.path.isfile(LOG_FILE)
+    
+    with open(LOG_FILE, mode='a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=["Timestamp"] + list(results.keys()))
+        
+        if not file_exists:
+            writer.writeheader()
+            
+        # Combine timestamp with our results dictionary
+        row = {"Timestamp": timestamp}
+        row.update(results)
+        writer.writerow(row)
+
     print(f"Chaski-Link: Log updated at {timestamp}")
+    
+    # Trigger local notification if thresholds were hit
+    if alert_needed:
+        status_summary = ", ".join([f"{k}: {v}" for k, v in results.items()])
+        send_chaski_alert("Network Alert", status_summary)
 
 if __name__ == "__main__":
     main()
