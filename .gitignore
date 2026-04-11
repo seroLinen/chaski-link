@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Local Environment
+.venv/
+__pycache__/
+
+# Private Data (Keep off GitHub)
+study_pulse.json
