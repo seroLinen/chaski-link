@@ -2,9 +2,12 @@ name: Daily Network Health Check
 
 on:
   schedule:
-    # This runs at 17:00 UTC (12:00 PM Central Time) every day
-    - cron: '0 17 * * *'
+    # Runs every 30 minutes, around the clock (UTC)
+    - cron: '*/30 * * * *'
   workflow_dispatch: # This lets you trigger it manually from the GitHub website
+
+permissions:
+  contents: write # Required so the final step can push the updated log/graph
 
 jobs:
   build:
