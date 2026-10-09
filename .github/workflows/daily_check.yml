@@ -33,10 +33,13 @@ jobs:
     - name: Run Latency Analysis
       run: python analyze.py
 
+    - name: Generate Status Dashboard
+      run: python dashboard.py
+
     - name: Commit and push changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add network_log.csv latency_report.png
-        git commit -m "Chaski-Link: Automated Daily Update & Graph [Skip CI]" || echo "No changes to commit"
+        git add network_log.csv latency_report.png incidents.csv status.html
+        git commit -m "Chaski-Link: Automated Update [Skip CI]" || echo "No changes to commit"
         git push

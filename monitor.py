@@ -4,6 +4,7 @@ import csv
 import os
 from datetime import datetime
 from plyer import notification
+from incidents import update_incidents
 
 # --- CONFIGURATION ---
 # Threshold in milliseconds to trigger a Windows notification
@@ -68,7 +69,13 @@ def main():
         writer.writerow(row)
 
     print(f"Chaski-Link: Log updated at {timestamp}")
-    
+
+    # Open/close incidents based on this run's readings
+    still_open = update_incidents(results, LATENCY_THRESHOLD, timestamp)
+    if still_open:
+        open_summary = ", ".join(f"{i['Server']} ({i['Severity']})" for i in still_open)
+        print(f"Chaski-Link: {len(still_open)} open incident(s): {open_summary}")
+
     # Trigger local notification if thresholds were hit
     if alert_needed:
         status_summary = ", ".join([f"{k}: {v}" for k, v in results.items()])
