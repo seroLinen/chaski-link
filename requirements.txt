@@ -1,3 +1,4 @@
 plyer
 pandas
 matplotlib
+tzdata

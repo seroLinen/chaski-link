@@ -9,13 +9,29 @@ plain HTML file you can open locally or publish with GitHub Pages.
 
 import csv
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 LOG_FILE = 'network_log.csv'
 INCIDENTS_FILE = 'incidents.csv'
 OUTPUT_FILE = 'status.html'
 SERVERS = ['Google_DNS', 'Cloudflare_DNS', 'Quad9_DNS']
 LABELS = {'Google_DNS': 'Google', 'Cloudflare_DNS': 'Cloudflare', 'Quad9_DNS': 'Quad9'}
+
+# Logs are written in UTC (GitHub's runners use UTC). The page shows Central time.
+DISPLAY_TZ = ZoneInfo('America/Chicago')
+
+
+def to_central(ts):
+    """Converts a 'YYYY-MM-DD HH:MM:SS' UTC string to a Central-time display string."""
+    if not ts:
+        return ts
+    try:
+        dt = datetime.strptime(ts, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+    except ValueError:
+        return ts
+    local = dt.astimezone(DISPLAY_TZ)
+    return local.strftime('%Y-%m-%d %I:%M %p ') + local.tzname()
 
 
 def load_log():
@@ -58,7 +74,7 @@ def current_status(rows, server, threshold=100.0):
 
 
 def render(rows, incidents):
-    last_check = rows[-1]['Timestamp'] if rows else 'No data yet'
+    last_check = to_central(rows[-1]['Timestamp']) if rows else 'No data yet'
 
     status_cards = ""
     for server in SERVERS:
@@ -91,8 +107,8 @@ def render(rows, incidents):
         <tr>
           <td><span class="pill {sev_class}">{i['Severity']}</span></td>
           <td>{LABELS.get(i['Server'], i['Server'])}</td>
-          <td>{i['Start_Time']}</td>
-          <td>{i['End_Time'] or '—'}</td>
+          <td>{to_central(i['Start_Time'])}</td>
+          <td>{to_central(i['End_Time']) or '—'}</td>
           <td>{duration}</td>
           <td>{status}</td>
         </tr>"""
@@ -107,7 +123,7 @@ def render(rows, incidents):
     else:
         incidents_table = '<p class="empty">No incidents recorded. All checks have been healthy.</p>'
 
-    generated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    generated_at = to_central(datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'))
 
     return f"""<!DOCTYPE html>
 <html lang="en">
