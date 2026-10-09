@@ -12,11 +12,15 @@ import os
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
+from config import LABELS
+
 LOG_FILE = 'network_log.csv'
 INCIDENTS_FILE = 'incidents.csv'
 OUTPUT_FILE = 'status.html'
-SERVERS = ['Google_DNS', 'Cloudflare_DNS', 'Quad9_DNS']
-LABELS = {'Google_DNS': 'Google', 'Cloudflare_DNS': 'Cloudflare', 'Quad9_DNS': 'Quad9'}
+SERVERS = list(LABELS)
+
+# 'Timeout/Error' is the label early versions of monitor.py wrote for a failed check.
+OUTAGE_LABELS = ('Offline', 'Timeout/Error')
 
 # Logs are written in UTC (GitHub's runners use UTC). The page shows Central time.
 DISPLAY_TZ = ZoneInfo('America/Chicago')
@@ -48,21 +52,29 @@ def load_incidents():
         return list(csv.DictReader(f))
 
 
+def checks_for(rows, server):
+    """Rows where this server was actually checked (older rows may predate it)."""
+    return [r for r in rows if r.get(server)]
+
+
 def uptime_pct(rows, server):
-    """% of logged checks where the server was not Offline."""
-    total = len(rows)
-    if total == 0:
+    """% of this server's logged checks where it was not Offline."""
+    checked = checks_for(rows, server)
+    if not checked:
         return 100.0
-    down = sum(1 for r in rows if r.get(server) == 'Offline')
-    return 100.0 * (total - down) / total
+    down = sum(1 for r in checked if r[server] in OUTAGE_LABELS)
+    return 100.0 * (len(checked) - down) / len(checked)
 
 
 def current_status(rows, server, threshold=100.0):
     """Returns (state, reading) for the most recent check of a server."""
     if not rows:
         return 'unknown', 'No data'
-    reading = rows[-1].get(server, 'No data')
-    if reading == 'Offline':
+    checked = checks_for(rows, server)
+    if not checked:
+        return 'unknown', 'No data'
+    reading = checked[-1][server]
+    if reading in OUTAGE_LABELS:
         return 'down', reading
     try:
         latency = float(str(reading).replace('ms', ''))
@@ -79,7 +91,9 @@ def render(rows, incidents):
     status_cards = ""
     for server in SERVERS:
         state, reading = current_status(rows, server)
+        n_checks = len(checks_for(rows, server))
         uptime = uptime_pct(rows, server)
+        uptime_text = f"{uptime:.2f}% uptime ({n_checks} checks)" if n_checks else "No checks yet"
         status_cards += f"""
         <div class="card">
           <div class="card-header">
@@ -87,7 +101,7 @@ def render(rows, incidents):
             <span class="server-name">{LABELS[server]}</span>
           </div>
           <div class="reading">{reading}</div>
-          <div class="uptime">{uptime:.2f}% uptime ({len(rows)} checks)</div>
+          <div class="uptime">{uptime_text}</div>
         </div>"""
 
     # Most recent incidents first; open ones (no End_Time) sort to the top

@@ -11,7 +11,7 @@ Chaski-Link is a lightweight, Python-based network performance monitor inspired 
 ## 🚀 Features
 
 * **Automated checks:** A GitHub Actions workflow runs every 30 minutes. GitHub doesn't guarantee exact timing for scheduled runs, so expect some drift.
-* **Layer 4 monitoring:** Opens a TCP connection to port 53 on Google (8.8.8.8), Cloudflare (1.1.1.1) and Quad9 (9.9.9.9). This works where ICMP ping is blocked and confirms the DNS service itself is accepting connections.
+* **Layer 4 monitoring:** Opens a TCP connection to port 53 on six public DNS servers: Google, Cloudflare, Quad9, OpenDNS, AdGuard and Level3 (the list lives in `config.py`). This works where ICMP ping is blocked and confirms the DNS service itself is accepting connections.
 * **Incident tracking:** A server that fails to connect is logged as an **Offline** incident. One that responds slower than 100 ms is logged as **Degraded**. The incident closes automatically, with its duration, when the server recovers. A Degraded incident is upgraded if the server then goes Offline.
 * **Incident alerts:** Each new incident opens a GitHub issue (`Incident #N: server severity`) and the issue closes itself when the server recovers, so GitHub's normal issue notifications reach you.
 * **Status dashboard:** A static `status.html` shows current latency, uptime percentage and recent incidents per server, in Central time.
@@ -34,6 +34,7 @@ The workflow in `.github/workflows/daily_check.yml` runs these in order, then co
 
 | File | Purpose |
 | --- | --- |
+| `config.py` | The list of servers (name, IP, label, graph color), shared by every script |
 | `monitor.py` | Runs the checks and writes the log |
 | `incidents.py` | Incident open/close logic and `incidents.csv` handling |
 | `scripts/notify_incidents.sh` | Turns opened/closed incidents into GitHub issues (used by the workflow) |
@@ -65,11 +66,13 @@ python dashboard.py   # rebuild the status page, then open status.html
 ## ⚙️ Configuration
 
 * **Latency threshold:** `LATENCY_THRESHOLD` in `monitor.py` (default 100 ms) decides what counts as Degraded.
-* **Servers:** the `servers` dictionary in `monitor.py`. If you add one, also add it to `SERVERS` and `LABELS` in `dashboard.py` and to the plotted columns in `analyze.py`.
+* **Servers:** `SERVERS` in `config.py` (name, IP, label, graph color). Everything else picks it up. Adding a server widens the log's header automatically and keeps all earlier history. Don't rename an existing server's key, or its history splits across two columns.
 * **Schedule:** the `cron` line in `.github/workflows/daily_check.yml`.
 * **Display timezone:** `DISPLAY_TZ` in `dashboard.py`. Logs always stay in UTC.
 
 ## 📝 Notes
 
 * Timestamps in the CSV files are UTC because that is the GitHub runner's clock. Only the status page converts them for display.
+* Two early-April rows use an older label, `Timeout/Error`, for a failed check. The dashboard and graph treat it the same as `Offline`.
+* Servers added later (OpenDNS, AdGuard, Level3) have blank history before they were added; their uptime counts only checks that actually ran.
 * Running every 30 minutes means up to 48 automated commits a day.

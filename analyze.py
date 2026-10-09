@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
+from config import LABELS, COLORS
+
 # 1. Load the data
 try:
     df = pd.read_csv('network_log.csv')
@@ -14,7 +16,7 @@ except FileNotFoundError:
 OUTAGE_LABELS = ['Timeout/Error', 'Offline']
 df['Timestamp'] = pd.to_datetime(df['Timestamp'])
 
-cols = ['Google_DNS', 'Cloudflare_DNS', 'Quad9_DNS']
+cols = [c for c in LABELS if c in df.columns]
 outage_mask = df[cols].isin(OUTAGE_LABELS)
 
 for col in cols:
@@ -24,9 +26,10 @@ for col in cols:
 # 3. Create the plot — bigger canvas and higher DPI so it's actually legible
 fig, ax = plt.subplots(figsize=(16, 8), dpi=200)
 
-colors = {'Google_DNS': '#4285F4', 'Cloudflare_DNS': '#F38020', 'Quad9_DNS': '#66C2A5'}
-labels = {'Google_DNS': 'Google', 'Cloudflare_DNS': 'Cloudflare', 'Quad9_DNS': 'Quad9'}
+colors = COLORS
+labels = LABELS
 
+outage_labeled = False  # only the first outage marker gets a legend entry
 for col in cols:
     ax.plot(df['Timestamp'], df[col], label=labels[col], color=colors[col],
             marker='o', markersize=3, linewidth=1.3)
@@ -35,7 +38,8 @@ for col in cols:
     outages = df.loc[outage_mask[col], 'Timestamp']
     if not outages.empty:
         ax.scatter(outages, [0] * len(outages), color='red', marker='x',
-                   s=60, zorder=5, label=f'{labels[col]} outage' if col == cols[0] else None)
+                   s=60, zorder=5, label='Outage' if not outage_labeled else None)
+        outage_labeled = True
 
 # 4. Formatting
 ax.set_title('Chaski-Link: Network Latency Analysis', fontsize=18, pad=15)

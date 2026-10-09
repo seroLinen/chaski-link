@@ -4,6 +4,7 @@ import csv
 import os
 from datetime import datetime
 from plyer import notification
+from config import IPS
 from incidents import update_incidents
 
 # --- CONFIGURATION ---
@@ -13,12 +14,8 @@ LOG_FILE = 'network_log.csv'
 
 def check_connectivity():
     """Checks latency for specific DNS servers individually."""
-    servers = {
-        "Google_DNS": "8.8.8.8",
-        "Cloudflare_DNS": "1.1.1.1",
-        "Quad9_DNS": "9.9.9.9"
-    }
-    
+    servers = IPS
+
     results = {}
     any_high_latency = False
     
@@ -26,7 +23,7 @@ def check_connectivity():
         start = time.time()
         try:
             # Attempt a TCP connection to Port 53 (DNS)
-            socket.create_connection((ip, 53), timeout=3)
+            socket.create_connection((ip, 53), timeout=3).close()
             latency = (time.time() - start) * 1000
             results[name] = f"{latency:.2f}ms"
             
@@ -50,17 +47,42 @@ def send_chaski_alert(title, message):
     except Exception as e:
         print(f"Notification failed: {e}")
 
+def prepare_log(wanted):
+    """
+    Makes sure the log's header covers every column in `wanted`, and returns
+    the full list of columns to write. If servers were added since the log
+    was created, the header is widened and old rows get blanks for the new
+    columns, so history is kept. Columns for servers that were later removed
+    are kept too, so no data is ever dropped.
+    """
+    if not os.path.isfile(LOG_FILE) or os.path.getsize(LOG_FILE) == 0:
+        return wanted
+
+    with open(LOG_FILE, mode='r', newline='') as f:
+        reader = csv.DictReader(f)
+        existing = reader.fieldnames or []
+        rows = list(reader)
+
+    merged = list(existing) + [c for c in wanted if c not in existing]
+    if merged != list(existing):
+        with open(LOG_FILE, mode='w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=merged, restval='')
+            writer.writeheader()
+            writer.writerows(rows)
+        print(f"Chaski-Link: log header widened to {len(merged)} columns")
+    return merged
+
+
 def main():
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     results, alert_needed = check_connectivity()
     
-    # Check if file exists to write headers
-    file_exists = os.path.isfile(LOG_FILE)
-    
+    fieldnames = prepare_log(["Timestamp"] + list(results.keys()))
+
     with open(LOG_FILE, mode='a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=["Timestamp"] + list(results.keys()))
-        
-        if not file_exists:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, restval='')
+
+        if f.tell() == 0:
             writer.writeheader()
             
         # Combine timestamp with our results dictionary
