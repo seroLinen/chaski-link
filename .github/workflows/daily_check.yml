@@ -1,4 +1,4 @@
-name: Daily Network Health Check
+name: Network Health Check
 
 on:
   schedule:
@@ -9,18 +9,26 @@ on:
 permissions:
   contents: write # Required so the final step can push the updated log/graph
 
+# Never let two runs overlap: they both append to the same CSV files,
+# so a second run waits for the first instead of racing it to the push.
+concurrency:
+  group: network-health-check
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.x'
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
@@ -41,5 +49,10 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add network_log.csv latency_report.png incidents.csv status.html
-        git commit -m "Chaski-Link: Automated Update [Skip CI]" || echo "No changes to commit"
-        git push
+        if git diff --cached --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Chaski-Link: Automated Update [Skip CI]"
+          git pull --rebase origin main
+          git push
+        fi
