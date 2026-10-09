@@ -212,3 +212,6 @@ __pycache__/
 
 # Private Data (Keep off GitHub)
 study_pulse.json
+
+# Per-run incident events (consumed by the workflow, never committed)
+incident_events.json

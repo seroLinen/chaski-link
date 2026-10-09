@@ -13,6 +13,7 @@ Chaski-Link is a lightweight, Python-based network performance monitor inspired 
 * **Automated checks:** A GitHub Actions workflow runs every 30 minutes. GitHub doesn't guarantee exact timing for scheduled runs, so expect some drift.
 * **Layer 4 monitoring:** Opens a TCP connection to port 53 on Google (8.8.8.8), Cloudflare (1.1.1.1) and Quad9 (9.9.9.9). This works where ICMP ping is blocked and confirms the DNS service itself is accepting connections.
 * **Incident tracking:** A server that fails to connect is logged as an **Offline** incident. One that responds slower than 100 ms is logged as **Degraded**. The incident closes automatically, with its duration, when the server recovers. A Degraded incident is upgraded if the server then goes Offline.
+* **Incident alerts:** Each new incident opens a GitHub issue (`Incident #N: server severity`) and the issue closes itself when the server recovers, so GitHub's normal issue notifications reach you.
 * **Status dashboard:** A static `status.html` shows current latency, uptime percentage and recent incidents per server, in Central time.
 * **Latency graph:** `latency_report.png` plots the full history, with outages marked as red X's instead of being hidden.
 * **Local notifications:** When run on a Windows machine, `monitor.py` can show a toast notification for high latency or timeouts. These only appear locally, never on the GitHub runner.
@@ -35,6 +36,7 @@ The workflow in `.github/workflows/daily_check.yml` runs these in order, then co
 | --- | --- |
 | `monitor.py` | Runs the checks and writes the log |
 | `incidents.py` | Incident open/close logic and `incidents.csv` handling |
+| `scripts/notify_incidents.sh` | Turns opened/closed incidents into GitHub issues (used by the workflow) |
 | `analyze.py` | Generates the latency graph |
 | `dashboard.py` | Generates the status page (standard library only) |
 | `network_log.csv` | Full check history (timestamps in UTC) |

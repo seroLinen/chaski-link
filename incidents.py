@@ -12,10 +12,14 @@ else is healthy and has no open incident.
 """
 
 import csv
+import json
 import os
 from datetime import datetime
 
 INCIDENTS_FILE = 'incidents.csv'
+# Written fresh on every run (not committed): what opened or closed this run,
+# so the workflow can turn it into GitHub issues.
+EVENTS_FILE = 'incident_events.json'
 FIELDNAMES = ['Incident_ID', 'Server', 'Severity', 'Start_Time', 'End_Time', 'Duration_Minutes']
 
 
@@ -64,6 +68,7 @@ def update_incidents(results, threshold, timestamp):
     rows = load_incidents()
     open_by_server = {row['Server']: row for row in rows if not row['End_Time']}
     next_id = (max((int(r['Incident_ID']) for r in rows), default=0)) + 1
+    opened, closed = [], []
 
     for server, value in results.items():
         severity = _severity(value, threshold)
@@ -75,14 +80,16 @@ def update_incidents(results, threshold, timestamp):
                 if severity == 'Offline' and existing['Severity'] != 'Offline':
                     existing['Severity'] = 'Offline'
             else:
-                rows.append({
+                new_row = {
                     'Incident_ID': str(next_id),
                     'Server': server,
                     'Severity': severity,
                     'Start_Time': timestamp,
                     'End_Time': '',
                     'Duration_Minutes': '',
-                })
+                }
+                rows.append(new_row)
+                opened.append(dict(new_row, Reading=value))
                 next_id += 1
         else:
             if existing:
@@ -91,6 +98,9 @@ def update_incidents(results, threshold, timestamp):
                 end_dt = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
                 duration = (end_dt - start_dt).total_seconds() / 60
                 existing['Duration_Minutes'] = f"{duration:.1f}"
+                closed.append(dict(existing))
 
     save_incidents(rows)
+    with open(EVENTS_FILE, mode='w') as f:
+        json.dump({'opened': opened, 'closed': closed}, f, indent=2)
     return [row for row in rows if not row['End_Time']]
