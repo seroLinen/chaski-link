@@ -1,2 +1,2 @@
 Incident_ID,Server,Severity,Start_Time,End_Time,Duration_Minutes
-1,Google_DNS,Degraded,2026-10-12 22:42:51,,
+1,Google_DNS,Degraded,2026-10-12 22:42:51,2026-10-13 03:20:21,277.5
