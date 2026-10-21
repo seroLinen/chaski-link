@@ -263,3 +263,4 @@ Timestamp,Google_DNS,Cloudflare_DNS,Quad9_DNS,OpenDNS,AdGuard_DNS,Level3_DNS
 2026-10-20 21:12:32,6.00ms,5.69ms,4.54ms,4.52ms,31.50ms,22.03ms
 2026-10-21 00:00:39,6.97ms,5.74ms,5.41ms,5.22ms,22.38ms,5.80ms
 2026-10-21 05:07:35,15.04ms,12.67ms,Offline,14.16ms,23.34ms,14.65ms
+2026-10-21 10:25:45,4.08ms,8.71ms,8.67ms,8.41ms,8.54ms,9.26ms
