@@ -365,3 +365,4 @@ Timestamp,Google_DNS,Cloudflare_DNS,Quad9_DNS,OpenDNS,AdGuard_DNS,Level3_DNS
 2026-11-11 19:46:53,24.63ms,5.84ms,5.63ms,5.23ms,26.56ms,10.34ms
 2026-11-12 01:46:59,5.44ms,8.71ms,9.17ms,8.20ms,8.60ms,10.04ms
 2026-11-12 09:12:53,3.61ms,2.42ms,1.48ms,1.54ms,18.00ms,2.21ms
+2026-11-12 17:41:01,18.89ms,16.87ms,21.70ms,17.04ms,38.20ms,15.66ms
